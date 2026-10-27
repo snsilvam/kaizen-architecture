@@ -8,17 +8,29 @@
 
 **Input**: User description: "necesito crear el archivo spec.md del proyecto para que respete el SDD que estoy agregando en esta app"
 
-> **Qué es este documento.** Kaizen ya existe y está en producción. Este spec no pide
-> construir nada nuevo: registra **cómo se comporta hoy** el producto para que sea la fuente
-> de la verdad del SDD (Principio IV de la constitución, "cero código sombra"). Toda
+> **Qué es este documento.** Kaizen ya existe y está en producción. Este spec registra **cómo
+> se comporta hoy** el producto para que sea la fuente de la verdad del SDD (Principio IV de
+> la constitución, "cero código sombra"). Las únicas reglas nuevas son las decididas en
+> Clarifications sobre el fin de la temporada Winter Arc (FR-019a y FR-025a). Toda
 > funcionalidad futura se especifica en su propio `specs/NNN-.../spec.md` y, si cambia algo de
 > lo descrito aquí, debe decirlo explícitamente.
+
+## Clarifications
+
+### Session 2026-10-27
+
+- Q: ¿Cualquier persona puede crear su cuenta en Kaizen, o solo deben entrar cuentas creadas a mano? → A: Registro abierto: cualquiera crea su cuenta con correo y contraseña o con Google, y puede recuperar su contraseña; cada uno ve solo sus datos.
+- Q: ¿Qué pasa con el camino Winter Arc cuando termina la temporada, después del 2026-12-31? → A: Queda en solo lectura: sigue en el selector, se ven el reto y su analítica, pero no se pueden crear retos nuevos.
+- Q: Si un reto está en curso cuando termina la temporada, ¿qué pasa con sus días después del 2026-12-31? → A: Todo reto se corta el 2026-12-31: el que no llegó al día 90 se cierra sin completar.
+- Q: ¿La captura de facturas por foto queda en la línea base o pasa a un spec propio? → A: Sale de la línea base y la rama en desarrollo se descarta; si vuelve, se hará desde cero con su propio spec.
+- Q: ¿Qué se hace con `/sebas` y `/habito-1`, que quedan por fuera de los tres caminos? → A: Se toleran como están, sin funcionalidades nuevas; retirarlos sería un spec aparte.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Entrar con sesión y elegir un camino (Priority: P1)
 
-Una persona inicia sesión con su correo y contraseña. Después del login, y cada vez que quiera
+Cualquier persona puede crear su cuenta (correo y contraseña, o Google) e iniciar sesión; si
+olvida la contraseña, puede pedir un correo para restablecerla. Después del login, y cada vez que quiera
 cambiar, ve un selector con exactamente tres caminos: **Finanzas**, **Hábitos** y
 **Winter Arc**. Al elegir uno entra a su herramienta, con su propia piel visual. Desde
 cualquier camino puede volver al selector con un botón "Caminos".
@@ -40,6 +52,10 @@ y cerrar sesión.
 4. **Given** una persona dentro de un camino, **When** pulsa "Caminos", **Then** vuelve al
    selector.
 5. **Given** una dirección que no existe, **When** la abre, **Then** ve el selector de caminos.
+6. **Given** una persona sin cuenta, **When** se registra con correo y contraseña o con Google,
+   **Then** entra al selector de caminos sin datos de nadie más.
+7. **Given** una persona que olvidó su contraseña, **When** pide restablecerla con su correo,
+   **Then** recibe un correo para elegir una nueva.
 
 ---
 
@@ -140,6 +156,12 @@ sincronizar el día y verlo forjado en la cuadrícula.
 10. **Given** el día 90 cumplido sin perder el reto, **When** se evalúa, **Then** el reto queda
     completado y la persona es "Samurái"; puede ver su analítica (hábito más cumplido, éxito por
     día de la semana y hábito ancla).
+11. **Given** la temporada terminada (después del 2026-12-31 en Bogotá), **When** entra a
+    Winter Arc, **Then** ve su reto y su analítica en solo lectura y no puede crear un reto
+    nuevo.
+12. **Given** un reto activo que el 2026-12-31 no ha llegado a su día 90, **When** termina ese
+    día en Bogotá, **Then** el reto se cierra como "sin completar": no es "Samurái" ni
+    "perdido", y conserva sus días forjados y su etapa de forja.
 
 ---
 
@@ -211,30 +233,6 @@ con la web.
 
 ---
 
-### User Story 8 - Capturar facturas por foto (Priority: P4, en desarrollo)
-
-Una persona con el acceso de IA habilitado toma una foto de una factura y Kaizen extrae sus
-datos (total obligatorio; emisor, fecha e ítems si son legibles). No se guarda la foto.
-
-**Why this priority**: está en desarrollo y sin desplegar; acceso restringido a mano.
-
-**Independent Test**: con acceso habilitado, capturar una factura y ver su total en el listado;
-sin acceso, ver el aviso de funcionalidad no disponible.
-
-**Acceptance Scenarios**:
-
-1. **Given** una persona sin acceso de IA, **When** abre facturas, **Then** ve un aviso amigable
-   de que no está disponible.
-2. **Given** una foto de más de 10 MB o que no es imagen, **When** la sube, **Then** se rechaza
-   con un mensaje amigable.
-3. **Given** 30 capturas hoy, **When** intenta otra, **Then** se rechaza hasta mañana.
-4. **Given** una factura con un código único ya registrado, **When** la captura de nuevo,
-   **Then** se rechaza como duplicada.
-5. **Given** una lectura equivocada, **When** quiere corregirla, **Then** la borra y la vuelve a
-   capturar (no se edita).
-
----
-
 ### Edge Cases
 
 - Sesión expirada en medio de una acción: se vuelve al login sin mostrar errores técnicos.
@@ -247,6 +245,8 @@ sin acceso, ver el aviso de funcionalidad no disponible.
 - Winter Arc abierto después de varios días sin entrar: los días pendientes se cierran en
   orden al abrirlo, como si se hubieran juzgado a su hora.
 - Borrar un hábito que es regla de un Winter Arc vigente: no se permite.
+- Reto empezado después del 2026-10-02: sus 90 días no caben en la temporada, así que como
+  máximo termina "sin completar"; con la tregua hasta el 2026-12-31 tampoco puede perderse.
 - Fallo de red o del servidor: la persona ve un mensaje amigable y puede reintentar.
 
 ## Requirements *(mandatory)*
@@ -255,8 +255,9 @@ sin acceso, ver el aviso de funcionalidad no disponible.
 
 **Acceso y caminos**
 
-- **FR-001**: El sistema MUST exigir sesión iniciada con correo y contraseña para cualquier
-  dato o acción de negocio.
+- **FR-001**: El sistema MUST exigir sesión iniciada (correo y contraseña, o Google) para
+  cualquier dato o acción de negocio. El registro es abierto: cualquier persona MUST poder
+  crear su cuenta en la web y restablecer su contraseña por correo.
 - **FR-002**: El sistema MUST mostrar, tras el login y bajo demanda, un selector con
   exactamente tres caminos: Finanzas, Hábitos y Winter Arc.
 - **FR-003**: Cada persona MUST ver y modificar solo sus propios datos.
@@ -299,6 +300,8 @@ sin acceso, ver el aviso de funcionalidad no disponible.
   antes de la medianoche de Bogotá de ese día.
 - **FR-019**: El sistema MUST cerrar los días pasados en orden al consultar el reto, marcar el
   reto como perdido con 3 fallos consecutivos y como completado al cumplir el día 90.
+- **FR-019a**: Al terminar el 2026-12-31 (Bogotá), todo reto activo MUST cerrarse: si llegó
+  al día 90 queda completado; si no, queda "sin completar". Ningún día posterior se juzga.
 - **FR-020**: Los domingos MUST ser días libres que no cuentan para la racha, la deuda ni la
   analítica.
 - **FR-021**: Un día fallado MUST poder pagarse en sus 3 días siguientes (sin contar domingo)
@@ -307,22 +310,21 @@ sin acceso, ver el aviso de funcionalidad no disponible.
 - **FR-022**: Antes de la fecha de tregua configurada, un fallo MUST NOT hacer perder el reto.
 - **FR-023**: Las personas MUST poder cambiar las reglas del reto activo (≥ 3); el cambio vale
   desde hoy.
-- **FR-024**: El sistema MUST mostrar la analítica solo de retos completados o perdidos.
+- **FR-024**: El sistema MUST mostrar la analítica solo de retos cerrados (completados,
+  perdidos o sin completar).
 - **FR-025**: El camino Winter Arc MUST mostrar una cuenta atrás de temporada hasta el
   2026-12-31 a medianoche de Bogotá.
+- **FR-025a**: Terminada la temporada, el camino Winter Arc MUST seguir en el selector en
+  solo lectura: se ven el reto y su analítica, y crear un reto nuevo MUST rechazarse.
 
-**Móvil y facturas**
+**Móvil**
 
 - **FR-026**: La app Android MUST ofrecer login con correo, el selector de caminos y el inicio
   de Finanzas en solo lectura.
-- **FR-027**: La captura de facturas MUST estar disponible solo para personas con el acceso de
-  IA habilitado, aceptar imágenes de hasta 10 MB, limitar a 30 capturas por día de Bogotá,
-  rechazar duplicados por código único y no guardar la foto.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Persona usuaria**: quien inicia sesión; dueña de todos sus datos. Tiene un indicador de
-  acceso a IA (desactivado por defecto).
+- **Persona usuaria**: quien inicia sesión; dueña de todos sus datos.
 - **Ingreso**: nombre, monto entero en COP, fecha.
 - **Gasto pendiente**: nombre, monto, categoría (identificada por código: mercado, otros…),
   vencimiento, estado pagado/pendiente.
@@ -333,9 +335,8 @@ sin acceso, ver el aviso de funcionalidad no disponible.
 - **Meta de hábito**: número de repeticiones objetivo (≥ 5), inicio y fecha de cumplimiento.
 - **Registro de sueño**: uno por día; despertar, acostarse, minutos dormidos; ligado al hábito
   "Despertar 5AM".
-- **Reto Winter Arc**: estado (activo, completado, perdido), compromiso, reglas (hábitos),
-  días cerrados con su resultado, deuda pagada y detalle de qué reglas se cumplieron.
-- **Factura**: total, emisor, fecha de emisión, ítems y código único; sin foto.
+- **Reto Winter Arc**: estado (activo, completado, perdido, sin completar), compromiso,
+  reglas (hábitos), días cerrados con su resultado, deuda pagada y detalle de qué reglas se cumplieron.
 
 ## Success Criteria *(mandatory)*
 
@@ -355,16 +356,22 @@ sin acceso, ver el aviso de funcionalidad no disponible.
 
 ## Assumptions
 
-- Este spec describe el comportamiento vigente a 2026-10-27; no introduce cambios. Si el
+- Este spec describe el comportamiento vigente a 2026-10-27; solo introduce las reglas
+  decididas en Clarifications (ver "Reglas decididas que el código aún no cumple"). Si el
   código y este documento difieren, se trata como defecto o como deuda a resolver con un spec
   nuevo, nunca en silencio.
 - **Fuera de la línea base, tolerados sin nuevas funcionalidades**: la página personal oculta
   "/sebas" (no es un camino) y el hábito de sueño antiguo "/habito-1" (se solapa con el
-  registro de sueño de la Historia 5; no se migran datos).
+  registro de sueño de la Historia 5; no se migran datos). Siguen funcionando como hoy; solo
+  se corrigen si se rompen, y retirarlos requiere su propio spec.
+- **Reglas decididas que el código aún no cumple** (necesitan su propio spec para
+  implementarse): FR-025a, el bloqueo de retos nuevos tras la temporada, y FR-019a, el corte
+  de los retos activos el 2026-12-31 con el estado "sin completar". Hoy solo el frontend
+  tiene la fecha de cierre: el servidor no rechaza crear un reto ni corta los activos.
 - **Deudas conocidas que este spec no corrige**: Finanzas calcula "hoy" en UTC y no en hora de
   Colombia; la dirección de producción fija en el cliente de gastos.
-- La captura de facturas (Historia 8) está en desarrollo y no desplegada; el acceso de IA se
-  habilita a mano por persona.
+- **Fuera de este spec**: la captura de facturas por foto. La versión en desarrollo se
+  descartó (2026-10-27); si vuelve, se especifica desde cero con `/speckit-specify`.
 - Solo existen montos en pesos colombianos, enteros y sin decimales.
 - "Hoy" para Hábitos, sueño y Winter Arc es el día calendario de Bogotá.
 - La tregua del Winter Arc es una fecha configurable por entorno; en producción, por defecto

@@ -74,7 +74,7 @@ Estructura de cada dominio: `entity.go` (struct con tags GORM/JSON + `Validate()
 
 | Dominio (`internal/`) | Tablas | Endpoints |
 |---|---|---|
-| `user` | `users` (`ia_feature`: acceso al módulo de facturas, manual) | `POST /users/sync` (idempotente, sin body), `GET /users/me` (incluye `iaFeature`) |
+| `user` | `users` | `POST /users/sync` (idempotente, sin body), `GET /users/me` |
 | `income` | `incomes` | `GET/POST /incomes`, `DELETE /incomes/:id` |
 | `pending_payment` | `pending_payments`, `pending_payment_categories` | `GET/POST /pending-payments`, `PATCH /:id/mark-as-paid`, `PATCH /:id/mark-as-market-budget`, `DELETE /:id`; `GET /pending-payment-categories` |
 | `market` (lista de mercado) | `market_items` (FK → `pending_payments`, CASCADE; `quantity`, `estimated_unit_price`, `price` = precio real por unidad, `purchased`) | `GET/POST /market`, `GET/PUT/DELETE /market/:id`, `POST /market/:id/items`, `PUT/DELETE /market/:id/items/:itemId`, `PATCH /:itemId/mark-as-purchased` (`{price, quantity?}`), `PATCH /:itemId/mark-as-pending` |
@@ -82,7 +82,6 @@ Estructura de cada dominio: `entity.go` (struct con tags GORM/JSON + `Validate()
 | `habit1` | `habit1_records` | `GET/POST /habit-1` (sueño; horas en `"HH:MM"`) |
 | `kaizen-habits` (pkg `kaizen_habits`) | `kaizen_habits`, `kaizen_habit_repetitions`, `kaizen_habit_goals` | `/kaizen-habits` CRUD + `/:habitId/repetitions`, `/calendar`, `/stats`, `/goals` |
 | `winterarc` | `winter_arc_logs`, `winter_arcs`, `winter_arc_rules` (FK → `kaizen_habits`, RESTRICT), `winter_arc_days` (solo días sincronizados; el grid de 90 se arma en Go) (SQL crudo con `database/sql`, no GORM) | `POST /api/winter-arc/setup` (≥ 3 hábitos activos propios, un reto vigente a la vez; `commitment` = respuesta a "¿Cuál es tu compromiso con tu yo de enero?", columna `winter_arcs.commitment`, ≤ 500, opcional en el backend por compatibilidad y obligatorio en el modal del front; sale también en el grid), `GET /api/winter-arc/current` (grid del reto más reciente en cualquier estado; 404 si nunca hubo; el grid de `current` y `:id/grid` trae `schedule`: las reglas ordenadas por la hora `"HH:MM"` del hábito, sin hora al final, con `done_today` sólo si el reto está activo — el front lo pinta en `WinterArcSchedule` con el "ahora" de Bogotá), `GET /api/winter-arc/:id/grid`, `POST /api/winter-arc/:id/sync-today` (éxito = todas las reglas con repetición kaizen hoy; sync y cierre guardan el detalle por regla en `winter_arc_days.habit_execution_log` JSONB), `PUT /api/winter-arc/:id/rules` (`{habit_ids}` = lista completa, ≥ 3; editar qué hábitos entran y salen del reto activo, si no 409; los nuevos deben ser hábitos activos, una regla pausada puede quedarse; **vale desde hoy**: `UpdateRules` hace `settle` antes, así los días pasados se cierran con las reglas viejas, y re-sincroniza hoy si ya tenía fila; responde el grid; en el front, botón "Editar código" de `WinterArcSchedule` → `WinterArcRulesDialog`. El `habit_execution_log` de cada día es la foto de sus reglas: la deuda se paga con las que faltaron ese día (`missingHabits`) y la analítica suma las reglas que salieron (`evaluatedHabitIDs`); una regla quitada deja de estar protegida por la FK RESTRICT), `GET /api/winter-arc/:id/analytics` (solo `completed`/`failed`, si no 409; hábito más cumplido, éxito por día de la semana y Hábito Ancla del último tercio de los días cerrados), `POST /api/winter-arc/log`, `GET /api/winter-arc/today` — inmutable, solo escribe hoy; reto de 90 días; sin proceso nocturno: al leer el reto (grid, current, sync-today, setup) `Service.settle` cierra en orden los días pasados abiertos (`winter_arc_days.closed_at`; el sync lo rechaza con 409), contando solo repeticiones con `registered_at` < medianoche Bogotá del día, actualiza `winter_arcs.consecutive_failed_days` y con 3 → `status=failed`, día 90 vivo → `completed`. **Tregua** (`WINTER_ARC_GRACE_UNTIL`, `YYYY-MM-DD`; en el deploy, la variable de GitHub o `2026-12-31` por defecto; vacía en local = sin tregua): los días hasta esa fecha topan la racha en 2 y no pierden el reto; uno perdido dentro de la tregua se reabre al leerlo (`Repository.Reopen`, solo si es el más reciente del usuario). **Domingo libre** (`RestWeekday`): se cierra sin resultado, no suma fallo ni reinicia la racha, no deja deuda, no cuenta en analytics ni como forjado, y el plazo de la deuda no lo cuenta (`dueDate`: la del sábado vence el miércoles); sync-today en domingo no escribe. Sale de la fecha (`Day.RestDay`, `is_rest_day` en el grid), así que vale también para los domingos cerrados antes: la racha que juzga cada día se rehace con `failureStreak` sobre los días guardados, no con la columna. Los tests del handler fijan el reloj con `Service.UseClock`. **Deuda**: un día fallado se paga en sus 3 días siguientes (`DebtPaymentDays`) registrando, con la fecha del fallo, una repetición de cada regla que faltó (de cualquier origen, también el calendario de `/habits`); `settle` lo detecta (corte = medianoche del día en que se juzga, o ahora), marca `winter_arc_days.debt_paid` y recalcula la racha (`failureStreak`): cuenta como cumplido para los 3 fallos pero `is_successful`/log no cambian (no suma en analytics, pero el front lo cuenta como día forjado en `countForgedDays`); con el reto perdido o completado ya no se paga. El grid trae `debts` (`WinterArcDebts` en el front) |
-| `invoice` (rama `feature/invoices`, sin desplegar a 2026-10-09) | `invoices` (ítems en JSONB; índice único parcial `(user_id, cufe) WHERE cufe <> ''`) | `GET/POST /invoices` (POST multipart, campo `image`), `GET /invoices/:id`, `DELETE /invoices/:id` |
 | `sleep` | `sleep_records` (FK → `kaizen_habits`, CASCADE; único `(user_id, record_date)`; `wake_time`/`bed_time` `"HH:MM"`, `sleep_minutes` 1–1440) | `GET /sleep/today` (asegura el hábito `Habito 01: Despertar 5AM` y devuelve `{date, habit, record \| null}`), `PUT /sleep/today` (upsert `{wakeTime, bedTime, sleepMinutes}`) — solo se escribe hoy; los dos responden además `history` (`internal/sleep/history.go`, higiene del sueño): los últimos 5 registros hasta hoy (`ListRecent`; hoy solo si ya se registró, los días sin registro se saltan), cada uno con `sleepStatus` (`ok` ≥ 7 h, `warning` 6–7 h, `short` < 6 h) y `wakeOnSchedule` (± 30 min de `typicalWakeTime`, la mediana de los despertares mostrados; con días pares, la menor central), más `averageSleepMinutes` y `onTrack` (todos a su hora y ninguna noche < 6 h). El front lo pinta en `SleepHistory`, arriba del formulario del modal. El registro del día D = despertar de D, acostarse la noche de D y duración de la noche D−1→D, todo declarado, nada calculado; "hoy" en la zona del hábito (Bogotá). El hábito lo busca o crea `KaizenHabitRepository.EnsureByName` (nombre exacto, el más antiguo si hay varios, `pg_advisory_xact_lock` por usuario: sin índice único en `kaizen_habits`). Es independiente de `habit1` |
 | `health` | — | Públicos: `/health`, `/health/sql`, `/ready`, `/swagger`, `/docs/swagger.yaml` |
 
@@ -103,25 +102,12 @@ Reglas de negocio clave:
   lista pagada (`closed`) = solo lectura (409). Las filas anteriores a la lista se migraron como compradas
   (`MarketRepository.addPurchasedColumn`).
 - **Categorías**: se comparan por `code` (`mercado`, `otros`), nunca por id o nombre.
-- **Facturas**: se capturan por foto, nunca por formulario. **v1 no guarda la foto** (decisión KISS del 2026-10-09:
-  solo se usa para que Claude la lea; se persisten los datos extraídos. Si se quiere después, lo simple es bytea en
-  Postgres en tabla aparte, no Cloud Storage). `invoice.Service` depende de tres puertos: `Repository`, `FeatureGate`
-  (lo implementa `UserRepository.HasIAFeature`) y `Extractor` (Claude vía API directa, `internal/infrastructure/llm`,
-  structured outputs con JSON schema, `effort: low`, modelo en `INVOICE_MODEL`, default `claude-haiku-5-5`).
-  En local, `cmd/fakeclaude` + `ANTHROPIC_BASE_URL=http://localhost:9090` prueba todo sin gastar tokens.
-  **Acceso**: toda operación de `/invoices` exige `users.ia_feature = true` (boolean, default false, se activa a mano
-  en PostgreSQL; `Upsert` del login no lo toca); si no, 403 y el front muestra `FeatureUnavailableDialog`. Es una
-  validación mínima a propósito: la capa de autorización vendrá después.
-  Orden de la captura: acceso → validar imagen (≤ 10 MB, JPEG/PNG/WebP detectado por bytes)
-  → límite de 30 capturas/día Bogotá → modelo → CUFE duplicado (409) → fila. Solo el total es obligatorio; lo
-  ilegible queda vacío/0 y `issued_on` en null; una lectura mala se corrige borrando y recapturando. Sin key la API
-  arranca y la captura responde 503. Es un proyecto personal para aprender: Haiku por costo, el modelo se compara con datos.
 
 ### Migraciones
 
 `cmd/migrate` (binario aparte, misma imagen). `internal/infrastructure/sql/migrate.go`:
 `AutoMigrate` para users/habit1/incomes y `Migrate()` propio por repo cuando hay FK, índices
-parciales o checks. **El orden importa**: categorías → pending_payments → kaizen_habits → sleep → market → invoices (sin FK) → winter_arc.
+parciales o checks. **El orden importa**: categorías → pending_payments → kaizen_habits → sleep → market → winter_arc.
 Una tabla nueva debe registrarse aquí.
 
 ### Comandos
@@ -137,8 +123,8 @@ go test ./...
 
 Env: `DATABASE_URL`, `GOOGLE_CLOUD_PROJECT`, `PORT` (8080), `ENV`, `CORS_ALLOWED_ORIGINS`
 (default `http://localhost:5173,http://localhost:3000`), `DB_MAX_OPEN_CONNS`, `DB_MAX_IDLE_CONNS`,
-`DB_CONN_MAX_LIFETIME_MINUTES`, `DB_CONN_MAX_IDLE_MINUTES`, `ANTHROPIC_API_KEY` (en Cloud Run desde Secret
-Manager, secreto `anthropic-api-key`), `INVOICE_MODEL`, `ANTHROPIC_BASE_URL` (solo local, apunta a `cmd/fakeclaude`), `WINTER_ARC_GRACE_UNTIL` (tregua del Winter Arc; fecha inválida = la API no arranca). Nunca loguear `DATABASE_URL` ni la API key.
+`DB_CONN_MAX_LIFETIME_MINUTES`, `DB_CONN_MAX_IDLE_MINUTES`, `WINTER_ARC_GRACE_UNTIL` (tregua del Winter Arc; fecha
+inválida = la API no arranca). Nunca loguear `DATABASE_URL`.
 
 ## Frontend (`front-kaizensnsilvam.com/`)
 
@@ -148,7 +134,7 @@ Manager, secreto `anthropic-api-key`), `INVOICE_MODEL`, `ANTHROPIC_BASE_URL` (so
 src/main.tsx      <AuthProvider><ProtectedRoute><App/></ProtectedRoute></AuthProvider>
 src/App.tsx       "router" casero por window.location.pathname (no hay react-router)
 src/auth/         firebase.ts (ÚNICO archivo que importa el SDK), AuthContext, AuthProvider, useAuth, ProtectedRoute
-src/pages/        Home, Login, SelectApp, RegisterIncome, RegisterPendingPayment, Market, Invoices, RegisterHabit1, Habits, WinterArc, WinterArcSetup, Sebas
+src/pages/        Home, Login, SelectApp, RegisterIncome, RegisterPendingPayment, Market, RegisterHabit1, Habits, WinterArc, WinterArcSetup, Sebas
 src/hooks/        use<Recurso>.ts: estado {data, loading, error, reload} con useState/useEffect
 src/services/     api.ts (request) + un archivo por recurso; mapean contrato backend → modelo UI
 src/types/        contratos TS por recurso
@@ -160,9 +146,7 @@ Rutas: `/` no tiene página: es el índice y `main.tsx` cambia la URL a `/camino
 conserva query y hash); una ruta desconocida también muestra el selector. `/finanzas` Home (dashboard, `PATH_HOME.finanzas`;
 los enlaces al inicio de finanzas usan esa constante, nunca `/`), `/ingresos`, `/gastos`, `/mercado` (lista de
 mercado, mobile-first: `/mercado` elige o crea la lista y `?id=` es la lista con `MarketBudgetBar` fija bajo el header;
-las hojas inferiores comparten `MarketSheet`), `/facturas` (captura por cámara; la foto se comprime
-en el navegador en `src/lib/imageCompression.ts` antes de subirla; no se guarda, el detalle muestra solo los datos;
-`request()` no fuerza `Content-Type` JSON cuando el body es `FormData`), `/habito-1` (tema samurái),
+las hojas inferiores comparten `MarketSheet`), `/habito-1` (tema samurái),
 `/habits` (Kaizen Habits, sin `AppLayout`, piel `.habits-theme`: la vista "hoy" (`HabitsToday`: anillo del día y
 check de un toque por hábito, con la semana de `useHabitsToday` = calendario de 7 días + stats por hábito) y
 `?habito=<id>` el detalle (`HabitDetail`, con `pushState` para que "atrás" vuelva a hoy); crear/editar es el asistente
