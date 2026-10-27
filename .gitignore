@@ -1,0 +1,6 @@
+# Repos Git independientes: cada uno se versiona por su cuenta.
+kaizensnsilvam-backend/
+front-kaizensnsilvam.com/
+kaizen-mobile/
+gcp-cloud-functions/
+.worktrees/

@@ -1,50 +1,116 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Kaizen Constitution
+
+Kaizen es una herramienta de mejora personal continua: finanzas y hábitos personales para
+usuarios autenticados, con la disciplina diaria del 1 % como idea central.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Tres caminos fijos al servicio de tres preguntas
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+- El sistema MUST manejar exactamente tres caminos, cada uno un módulo/herramienta distinta:
+  **Finanzas**, **Hábitos** y **Winter Arc**. Agregar, quitar o fusionar caminos es una enmienda
+  MAJOR de esta constitución.
+- **Finanzas**: gestionar el dinero personal con disciplina; mejora continua del 1 % cada día.
+  Toda funcionalidad de finanzas MUST responder al menos una de: ¿cuánto puedo gastar hoy?,
+  ¿cuántos días faltan para mi próximo ingreso?, ¿voy bien o mal respecto a mi plan?
+- **Hábitos**: gestionar hábitos personales; lo importante no es el hábito sino repetir la
+  identidad cada día. Las funcionalidades MUST reforzar la repetición diaria.
+- **Winter Arc**: reto de 90 días de mejora personal, vigente solo durante 2026 (la temporada
+  termina el 2026-12-31). Las funcionalidades MUST NOT extenderlo más allá de esa fecha sin enmienda.
+- Montos en COP como enteros, sin decimales ni moneda en el backend.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+Razón: un alcance fijo y pequeño evita que la herramienta se disperse.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Herramienta, no web app
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+- Kaizen MUST sentirse como una herramienta diaria al estilo Duolingo: acciones de un toque,
+  progreso visible (rachas, anillos, etapas), urgencia y recompensa por la constancia.
+- Las pantallas MUST ser mobile-first y priorizar la acción de hoy sobre la consulta o la
+  configuración.
+- Una funcionalidad que solo agrega formularios o listados sin aportar al hábito diario MUST
+  justificarse en su `spec.md`.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Razón: el valor está en volver cada día, no en administrar datos.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. Sesión activa e identidad desde el token (NON-NEGOTIABLE)
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+- Todo flujo MUST exigir un usuario con sesión activa (Firebase Auth); no hay pantallas ni
+  endpoints de negocio anónimos (solo salud y documentación son públicos).
+- La identidad MUST salir del ID token verificado en el backend; el `user_id` nunca viaja en
+  body ni query, y toda consulta MUST filtrar por el UID autenticado.
+- Antes de leer, editar o borrar un recurso por id, el service MUST verificar que pertenece al
+  usuario.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Razón: son datos personales; un fallo aquí expone finanzas o hábitos de otra persona.
+
+### IV. KISS, SOLID y cero código sombra
+
+- La solución MUST ser la más simple que cumpla el `spec.md`: sin capas nuevas, reflexión,
+  frameworks pesados, colas ni asincronía salvo que el spec lo pida.
+- Se aplican SOLID con mesura: interfaces pequeñas del lado del consumidor, una responsabilidad
+  por service/handler, dependencias inyectadas a mano en el composition root.
+- **Cero código sombra**: se construye estrictamente lo documentado en `spec.md`. Nada "por si
+  acaso" (pasarelas de pago, perfiles complejos, configuraciones no pedidas, refactors estéticos).
+- Dependencias nuevas MUST justificarse en el plan.
+
+Razón: proyecto personal para aprender; cada pieza extra es costo y deuda.
+
+### V. Errores amigables y HTTP semántico
+
+- **UI**: nunca se muestran errores crudos, stack traces ni mensajes técnicos. Todo error MUST
+  traducirse a un mensaje amigable en español (p. ej. "La finanza pendiente ya fue pagada antes.").
+- **Backend**: MUST responder códigos HTTP semánticos — 400 petición inválida, 401 no
+  autenticado, 403 sin acceso, 404 no encontrado, 409 conflicto de estado — con el cuerpo
+  `{"error": "mensaje"}`.
+- Los errores de dominio MUST ser centinelas del dominio, mapeados a HTTP en el handler.
+- Nunca se loguean secretos (`DATABASE_URL`, API keys, tokens).
+
+Razón: el usuario debe saber qué pasó y qué hacer; el cliente debe poder decidir por el código.
+
+## Stack tecnológico y estructura
+
+- **Frontend web** (`front-kaizensnsilvam.com/`): React + Vite, TypeScript, Tailwind CSS para
+  los estilos; desplegado en Cloud Run (nginx). Migrar a otro framework (p. ej. Next.js) es un
+  cambio de arquitectura que requiere su propio spec.
+- **Backend** (`kaizensnsilvam-backend/`): Go, API REST en Cloud Run. Es la única puerta a los
+  datos; el frontend y el móvil consumen solo la API.
+- **Cloud backend** (`gcp-cloud-functions/`): Cloud Functions Gen 2 en Go; experimental, fuera
+  del flujo principal.
+- **Base de datos**: PostgreSQL en una VM de GCP (red privada) para el flujo principal; Firestore
+  solo en los experimentos de Cloud Functions. PostgreSQL se accede solo desde repositorios.
+- **Mobile** (`kaizen-mobile/`): app Android en React Native + Expo, APK fuera de Play Store
+  compilada con EAS Build; v1 = login con correo, caminos y dashboard de Finanzas en solo lectura.
+- **Lenguajes**: TypeScript en toda la capa de presentación (web y móvil); Go en todo el backend.
+- **Estructura plana**: un repositorio Git por capa, en la raíz del workspace, sin anidar
+  proyectos ni crear carpetas organizativas vacías. Todo corre en el proyecto GCP
+  `kaizensnsilvam`, región `us-central1`.
+
+## Estilo de código y flujo SDD
+
+- **Estilo**: programación funcional y componentes funcionales con hooks en React; clases solo
+  si son obligatorias. En Go, código idiomático: paquetes por dominio, errores como valores,
+  interfaces pequeñas.
+- **Nomenclatura**: `camelCase` para funciones y variables, `PascalCase` para tipos, interfaces y
+  componentes (en Go, la exportación sigue las reglas del lenguaje). Nombres de negocio
+  (`RegisterIncome`, `MarkAsPaid`), sin sufijos técnicos. Textos de UI en español.
+- **Fuente de la verdad**: el `spec.md` de cada funcionalidad. Si una instrucción contradice esta
+  constitución o el spec tiene una falla lógica, el agente MUST detenerse, advertir el problema y
+  pedir que se actualice el `spec.md` antes de tocar código.
+- **Contratos**: si cambia el contrato REST, MUST actualizarse `docs/swagger.yaml` del backend y
+  los `types/` + `services/` de cada cliente que use el recurso; se mantiene la compatibilidad
+  hacia atrás de la API.
+- **Calidad**: tests del backend en el service con dobles simples; el frontend MUST pasar
+  `typecheck` (lo exige el CI).
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Esta constitución prevalece sobre cualquier otra práctica. `CLAUDE.md` es la guía operativa
+  del día a día y no puede contradecirla; si lo hace, gana la constitución y se corrige la guía.
+- **Enmiendas**: se proponen con `/speckit-constitution`, quedan registradas en este archivo y,
+  si invalidan código existente, MUST incluir un plan de migración o la deuda técnica explícita.
+- **Versionado** (SemVer): MAJOR = principio eliminado o redefinido de forma incompatible (p. ej.
+  cambiar los caminos); MINOR = principio o sección nuevos o ampliados; PATCH = redacción.
+- **Cumplimiento**: cada `plan.md` MUST pasar el Constitution Check antes de implementar; toda
+  complejidad que viole un principio MUST justificarse por escrito en el plan o eliminarse.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27

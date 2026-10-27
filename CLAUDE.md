@@ -1,7 +1,13 @@
 # Kaizen — memoria del proyecto
 
-Workspace con **cuatro repositorios Git independientes** (la carpeta raíz no es un repo).
-Cada commit, branch y PR se hace dentro del repo que corresponda.
+Workspace con **cuatro repositorios Git independientes**. Cada commit, branch y PR de código se
+hace dentro del repo que corresponda.
+
+La carpeta raíz es un quinto repo, **solo de specs y reglas**: `CLAUDE.md`, la constitución y el
+Spec Kit (`.specify/`, `.claude/`, `specs/`). Ignora los cuatro repos y `.worktrees/` (`.gitignore`).
+Hay **un solo Spec Kit**, en la raíz: un spec por funcionalidad en `specs/NNN-nombre/`, aunque toque
+varias capas; las capas aparecen en `plan.md` y `tasks.md`. No se hace `specify init` por repo.
+Para enlazar spec y código, la rama de cada repo tocado se llama como el spec (`NNN-nombre`).
 
 | Carpeta | Qué es | Stack |
 |---|---|---|
@@ -165,7 +171,12 @@ obligatorio)), `/winter-arc`, `/winter-arc/setup` y `/winter-arc/nuevo-habito` (
 con su propio `WinterArcLayout`; `nuevo-habito` crea en `kaizen_habits` con un formulario corto, siempre activo, sin salir del camino;
 con < 3 hábitos activos el setup ofrece "Sugerir hábitos": 3 sugerencias (ejercicio, comida sana, meditar) quemadas en
 `src/lib/winterArcSuggestions.ts` (v1; luego las dará la IA con la misma forma), se crean con `POST /kaizen-habits` y llegan marcadas al código; `/winter-arc` abre el reto de `GET /api/winter-arc/current`, `?id=` sigue funcionando; cerrado con
-cuenta atrás hasta `WINTER_ARC_OPENS_ON` en `src/lib/winterArcOpening.ts`), `/sebas`, `/caminos` (selector de caminos).
+cuenta atrás hasta `WINTER_ARC_OPENS_ON` en `src/lib/winterArcOpening.ts`; el header de `WinterArcLayout` lleva
+`WinterArcSeasonCountdown`, cuenta atrás global en vivo de 90 días que llega a cero el `WINTER_ARC_SEASON_ENDS_ON`
+(`2026-12-31`, 00:00 Bogotá) de `src/lib/winterArcSeason.ts`; no es el plazo del reto de cada usuario. Diseñada para
+dar urgencia: etapas por lo que falta (> 30 días ámbar, último mes naranja, última semana rojo, último día rojo que
+late), días que "ya se fueron", mecha que se consume y el cierre de hoy a medianoche de Bogotá (`bogotaDayEndsAt` en
+`src/lib/dayClock.ts`; el domingo libre lo dice en vez de contar)), `/sebas`, `/caminos` (selector de caminos).
 Identidad del Winter Arc: "la forja del samurái" — se apaga el cuerpo como máquina de placer y se enciende como
 samurái enfocado en cumplir los hábitos (`WinterArcManifesto`). Sello `侍`, piel propia vía `.winter-arc-theme`
 (redefine `--primary` & co. en `WinterArcLayout`), días cumplidos = "días forjados" que suben etapas de forja
