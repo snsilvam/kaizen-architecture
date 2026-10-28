@@ -11,7 +11,7 @@
 > **Qué es este documento.** Kaizen ya existe y está en producción. Este spec registra **cómo
 > se comporta hoy** el producto para que sea la fuente de la verdad del SDD (Principio IV de
 > la constitución, "cero código sombra"). Las únicas reglas nuevas son las decididas en
-> Clarifications sobre el fin de la temporada Winter Arc (FR-019a y FR-025a). Toda
+> Clarifications sobre el Winter Arc (FR-017, FR-019a y FR-025a). Toda
 > funcionalidad futura se especifica en su propio `specs/NNN-.../spec.md` y, si cambia algo de
 > lo descrito aquí, debe decirlo explícitamente.
 
@@ -24,6 +24,10 @@
 - Q: Si un reto está en curso cuando termina la temporada, ¿qué pasa con sus días después del 2026-12-31? → A: Todo reto se corta el 2026-12-31: el que no llegó al día 90 se cierra sin completar.
 - Q: ¿La captura de facturas por foto queda en la línea base o pasa a un spec propio? → A: Sale de la línea base y la rama en desarrollo se descarta; si vuelve, se hará desde cero con su propio spec.
 - Q: ¿Qué se hace con `/sebas` y `/habito-1`, que quedan por fuera de los tres caminos? → A: Se toleran como están, sin funcionalidades nuevas; retirarlos sería un spec aparte.
+- Q: Si el reto ya no dura siempre 90 días, ¿cómo se define cuántos días dura cada reto? → A: La persona elige cuántos días dura al crearlo; lo completa si llega al último día sin perderlo. Lo importante es cumplir el compromiso consigo misma, no la duración.
+- Q: ¿Cuántos días puede durar como mínimo y como máximo un reto, y se puede crear uno cuyo último día caiga después del 2026-12-31? → A: De 3 a 90 días, y el último día no puede caer después del 2026-12-31; lo demás se rechaza al crear el reto.
+- Q: Si alguien completa un reto corto (por ejemplo de 3 días), ¿también llega a "Samurái", y cómo avanzan las etapas de forja? → A: Completar el reto siempre da "Samurái", dure lo que dure; las etapas intermedias siguen fijas por días forjados (1, 7, 21, 45, 66).
+- Q: Con un reto ya en curso, ¿la persona puede cambiar cuántos días dura? → A: No; la duración se fija al crear el reto. Para ir más lejos, se completa y se crea un reto nuevo.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -117,19 +121,21 @@ completo y el día marcado en su calendario; desmarcarlo y ver que se revierte.
 
 ---
 
-### User Story 4 - Forjarme en 90 días (Winter Arc) (Priority: P2)
+### User Story 4 - Cumplir el reto que me puse (Winter Arc) (Priority: P2)
 
-La persona crea un reto de 90 días eligiendo al menos 3 de sus hábitos activos (su "código") y
-escribiendo su compromiso con su yo de enero. Cada día se forja si cumple **todas** las reglas
-del código. Ve una cuadrícula de 90 días, su horario del día, las etapas de forja del samurái,
+La persona crea un reto eligiendo cuántos días durará, al menos 3 de sus hábitos activos (su
+"código") y escribiendo su compromiso con su yo de enero. Lo que importa es repetir y cumplir
+lo que se comprometió consigo misma, no que el reto sea largo. Cada día se forja si cumple
+**todas** las reglas del código. Ve una cuadrícula con los días de su reto, su horario del día,
+las etapas de forja del samurái,
 sus deudas y una cuenta atrás de la temporada que termina el 2026-12-31 a medianoche de
 Bogotá.
 
 **Why this priority**: es el tercer camino y tiene fecha de cierre; su valor se pierde si no
 funciona durante la temporada 2026.
 
-**Independent Test**: con 3 hábitos activos, crear el reto, marcar hoy los 3 hábitos,
-sincronizar el día y verlo forjado en la cuadrícula.
+**Independent Test**: con 3 hábitos activos, crear un reto de 3 días, marcar hoy los 3
+hábitos, sincronizar el día y verlo forjado en una cuadrícula de 3 días.
 
 **Acceptance Scenarios**:
 
@@ -153,15 +159,23 @@ sincronizar el día y verlo forjado en la cuadrícula.
    **Then** no puede hacer perder el reto.
 9. **Given** un reto activo, **When** edita su código (≥ 3 hábitos), **Then** el cambio vale
    desde hoy y los días pasados se juzgan con las reglas que tenían.
-10. **Given** el día 90 cumplido sin perder el reto, **When** se evalúa, **Then** el reto queda
-    completado y la persona es "Samurái"; puede ver su analítica (hábito más cumplido, éxito por
-    día de la semana y hábito ancla).
+10. **Given** el último día del reto cumplido sin perderlo, **When** se evalúa, **Then** el reto
+    queda completado y la persona es "Samurái" sin importar la duración (un reto de 3 días
+    completado pasa directo a "Samurái"); puede ver su analítica (hábito más cumplido, éxito
+    por día de la semana y hábito ancla).
 11. **Given** la temporada terminada (después del 2026-12-31 en Bogotá), **When** entra a
     Winter Arc, **Then** ve su reto y su analítica en solo lectura y no puede crear un reto
     nuevo.
-12. **Given** un reto activo que el 2026-12-31 no ha llegado a su día 90, **When** termina ese
-    día en Bogotá, **Then** el reto se cierra como "sin completar": no es "Samurái" ni
+12. **Given** un reto activo que el 2026-12-31 no ha llegado a su último día, **When** termina
+    ese día en Bogotá, **Then** el reto se cierra como "sin completar": no es "Samurái" ni
     "perdido", y conserva sus días forjados y su etapa de forja.
+13. **Given** una persona que crea un reto, **When** elige su duración en días, **Then** el reto
+    dura exactamente esos días y la cuadrícula muestra solo esos días.
+14. **Given** una persona que crea un reto, **When** elige menos de 3 días, más de 90 o una
+    duración cuyo último día cae después del 2026-12-31, **Then** se rechaza con un mensaje
+    amigable que le dice cuántos días puede elegir.
+15. **Given** un reto activo, **When** quiere alargarlo o acortarlo, **Then** no es posible: la
+    duración quedó fija al crearlo; al completarlo puede crear un reto nuevo más largo.
 
 ---
 
@@ -245,8 +259,11 @@ con la web.
 - Winter Arc abierto después de varios días sin entrar: los días pendientes se cierran en
   orden al abrirlo, como si se hubieran juzgado a su hora.
 - Borrar un hábito que es regla de un Winter Arc vigente: no se permite.
-- Reto empezado después del 2026-10-02: sus 90 días no caben en la temporada, así que como
-  máximo termina "sin completar"; con la tregua hasta el 2026-12-31 tampoco puede perderse.
+- Reto creado antes de la duración elegible (todos de 90 días) y empezado después del
+  2026-10-02: sus días no caben en la temporada, así que como máximo termina "sin completar";
+  con la tregua hasta el 2026-12-31 tampoco puede perderse. Un reto nuevo no puede quedar así,
+  porque su último día debe caber en la temporada (FR-017).
+- Quedan menos de 3 días de temporada: ya no cabe ningún reto nuevo y crearlo se rechaza.
 - Fallo de red o del servidor: la persona ve un mensaje amigable y puede reintentar.
 
 ## Requirements *(mandatory)*
@@ -294,14 +311,20 @@ con la web.
 
 **Winter Arc**
 
-- **FR-017**: El sistema MUST permitir un único reto vigente por persona, de 90 días, con al
-  menos 3 hábitos activos propios como reglas y un compromiso de hasta 500 caracteres.
+- **FR-017**: El sistema MUST permitir un único reto vigente por persona, con la duración en
+  días que la persona elige al crearlo, al menos 3 hábitos activos propios como reglas y un
+  compromiso de hasta 500 caracteres. La duración MUST estar entre 3 y 90 días y su último
+  día MUST NOT caer después del 2026-12-31 (Bogotá); si no, crear el reto MUST rechazarse.
+  Una vez creado, la duración MUST NOT cambiar; para ir más lejos se crea un reto nuevo
+  cuando el actual termina.
 - **FR-018**: Un día MUST quedar forjado solo si todas sus reglas tienen repetición registrada
   antes de la medianoche de Bogotá de ese día.
 - **FR-019**: El sistema MUST cerrar los días pasados en orden al consultar el reto, marcar el
-  reto como perdido con 3 fallos consecutivos y como completado al cumplir el día 90.
+  reto como perdido con 3 fallos consecutivos y como completado al cumplir su último día.
 - **FR-019a**: Al terminar el 2026-12-31 (Bogotá), todo reto activo MUST cerrarse: si llegó
-  al día 90 queda completado; si no, queda "sin completar". Ningún día posterior se juzga.
+  a su último día queda completado; si no, queda "sin completar". Ningún día posterior se juzga.
+- **FR-019b**: Las etapas de forja MUST ganarse por días forjados (1, 7, 21, 45 y 66), sin
+  importar la duración del reto, y un reto completado MUST mostrar siempre la etapa "Samurái".
 - **FR-020**: Los domingos MUST ser días libres que no cuentan para la racha, la deuda ni la
   analítica.
 - **FR-021**: Un día fallado MUST poder pagarse en sus 3 días siguientes (sin contar domingo)
@@ -309,7 +332,7 @@ con la web.
   para la racha.
 - **FR-022**: Antes de la fecha de tregua configurada, un fallo MUST NOT hacer perder el reto.
 - **FR-023**: Las personas MUST poder cambiar las reglas del reto activo (≥ 3); el cambio vale
-  desde hoy.
+  desde hoy. Editar el reto no incluye su duración (FR-017).
 - **FR-024**: El sistema MUST mostrar la analítica solo de retos cerrados (completados,
   perdidos o sin completar).
 - **FR-025**: El camino Winter Arc MUST mostrar una cuenta atrás de temporada hasta el
@@ -335,7 +358,8 @@ con la web.
 - **Meta de hábito**: número de repeticiones objetivo (≥ 5), inicio y fecha de cumplimiento.
 - **Registro de sueño**: uno por día; despertar, acostarse, minutos dormidos; ligado al hábito
   "Despertar 5AM".
-- **Reto Winter Arc**: estado (activo, completado, perdido, sin completar), compromiso,
+- **Reto Winter Arc**: duración en días elegida al crearlo, estado (activo, completado,
+  perdido, sin completar), compromiso,
   reglas (hábitos), días cerrados con su resultado, deuda pagada y detalle de qué reglas se cumplieron.
 
 ## Success Criteria *(mandatory)*
@@ -365,9 +389,12 @@ con la web.
   registro de sueño de la Historia 5; no se migran datos). Siguen funcionando como hoy; solo
   se corrigen si se rompen, y retirarlos requiere su propio spec.
 - **Reglas decididas que el código aún no cumple** (necesitan su propio spec para
-  implementarse): FR-025a, el bloqueo de retos nuevos tras la temporada, y FR-019a, el corte
-  de los retos activos el 2026-12-31 con el estado "sin completar". Hoy solo el frontend
-  tiene la fecha de cierre: el servidor no rechaza crear un reto ni corta los activos.
+  implementarse): FR-025a, el bloqueo de retos nuevos tras la temporada; FR-019a, el corte
+  de los retos activos el 2026-12-31 con el estado "sin completar"; y FR-017, la duración
+  elegida por la persona. Hoy solo el frontend tiene la fecha de cierre: el servidor no
+  rechaza crear un reto ni corta los activos, y todo reto dura 90 días. FR-017 contradice el
+  Principio I de la constitución ("reto de 90 días"), que debe enmendarse antes de
+  implementarlo.
 - **Deudas conocidas que este spec no corrige**: Finanzas calcula "hoy" en UTC y no en hora de
   Colombia; la dirección de producción fija en el cliente de gastos.
 - **Fuera de este spec**: la captura de facturas por foto. La versión en desarrollo se

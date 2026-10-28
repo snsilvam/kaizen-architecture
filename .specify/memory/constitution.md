@@ -1,3 +1,17 @@
+<!--
+Sync Impact Report
+- Version change: 1.0.0 → 1.1.0 (MINOR: guía ampliada; un reto de 90 días sigue siendo válido)
+- Modified principles: I. Tres caminos fijos al servicio de tres preguntas — Winter Arc deja de
+  ser "reto de 90 días" y pasa a durar lo que la persona elige (3 a 90 días) dentro de la temporada
+- Added sections: ninguna
+- Removed sections: ninguna
+- Templates: no se tocan (leen la constitución al ejecutarse)
+- Deuda técnica explícita: el backend fija la duración en `ChallengeDays = 90`
+  (`kaizensnsilvam-backend/internal/winterarc/entity.go`) y las etapas de forja del front asumen
+  90 días. Se resuelve con un spec nuevo que implemente FR-017, FR-019a y FR-025a de
+  `specs/001-kaizen-baseline/spec.md`.
+- Follow-up TODOs: ninguno
+-->
 # Kaizen Constitution
 
 Kaizen es una herramienta de mejora personal continua: finanzas y hábitos personales para
@@ -15,8 +29,10 @@ usuarios autenticados, con la disciplina diaria del 1 % como idea central.
   ¿cuántos días faltan para mi próximo ingreso?, ¿voy bien o mal respecto a mi plan?
 - **Hábitos**: gestionar hábitos personales; lo importante no es el hábito sino repetir la
   identidad cada día. Las funcionalidades MUST reforzar la repetición diaria.
-- **Winter Arc**: reto de 90 días de mejora personal, vigente solo durante 2026 (la temporada
-  termina el 2026-12-31). Las funcionalidades MUST NOT extenderlo más allá de esa fecha sin enmienda.
+- **Winter Arc**: reto de mejora personal; lo importante es repetir y cumplir el compromiso con
+  uno mismo, no la duración. Cada reto dura los días que la persona elige al crearlo, de 3 a 90,
+  y es vigente solo durante 2026: su último día MUST NOT pasar del 2026-12-31, cuando termina la
+  temporada. Las funcionalidades MUST NOT extenderlo más allá de esa fecha sin enmienda.
 - Montos en COP como enteros, sin decimales ni moneda en el backend.
 
 Razón: un alcance fijo y pequeño evita que la herramienta se disperse.
@@ -113,4 +129,4 @@ Razón: el usuario debe saber qué pasó y qué hacer; el cliente debe poder dec
 - **Cumplimiento**: cada `plan.md` MUST pasar el Constitution Check antes de implementar; toda
   complejidad que viole un principio MUST justificarse por escrito en el plan o eliminarse.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27
+**Version**: 1.1.0 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27
